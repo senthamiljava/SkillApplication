@@ -17,6 +17,7 @@ import com.revature.skillapp.model.UserRating;
 import com.revature.skillapp.repository.RatingRepository;
 import com.revature.skillapp.repository.UserRatingRepository;
 import com.revature.skillapp.repository.UserRepository;
+import com.revature.skillapp.util.EmailUtil;
 
 @CrossOrigin
 @RestController
@@ -31,6 +32,9 @@ public class UserRatingController {
 	@Autowired
 	UserRepository userRepository;
 
+	@Autowired
+	private EmailUtil emailUtil;
+
 	@GetMapping("/users/{userId}")
 	public List<UserRating> findByUser(@PathVariable("userId") Integer id) {
 		User u = userRepository.findOne(id);
@@ -43,14 +47,25 @@ public class UserRatingController {
 	}
 
 	@PostMapping("/update/{id}/{scaleid}")
-	public UserRating update(@RequestBody UserRating userRating, @PathVariable("id") Integer id,
-			@PathVariable("scaleid") Integer ratingId) {
+	public UserRating update(@PathVariable("id") Integer id, @PathVariable("scaleid") Integer ratingId)
+			throws Exception {
+		UserRating u = userRatingRepository.findOne(id);
+		Rating r = ratingRepository.findOne(ratingId);
 		UserRating rating = new UserRating();
 		rating.setId(id);
-		rating.setSkill(userRating.getSkill());
-		rating.setUser(userRating.getUser());
-		Rating r = ratingRepository.findOne(ratingId);
+		rating.setSkill(u.getSkill());
+		rating.setUser(u.getUser());
+		rating.setIsActive(u.getIsActive());
 		rating.setRating(r);
-		return userRatingRepository.save(userRating);
+		UserRating userRatings = userRatingRepository.save(rating);
+		if (userRatings != null) {
+			User user = u.getUser();
+			String subject = "Skill Management System";
+			String body = "Skill updated";
+			emailUtil.send(user.getEmailId(), subject, body);
+			return userRatings;
+		} else {
+			return null;
+		}
 	}
 }
